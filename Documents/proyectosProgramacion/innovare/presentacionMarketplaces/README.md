@@ -28,3 +28,15 @@ Aplicación web para presentaciones de marketplaces desarrollada con Next.js y S
 - `/lib`: Utilidades y configuración de Supabase
 - `/public`: Archivos estáticos
 - `/styles`: Estilos globales
+
+## Autenticación
+
+La aplicación utiliza Supabase para la autenticación con Google. El flujo de autenticación incluye:
+
+1. Inicio de sesión con OAuth (Google)
+2. Manejo de callback de autenticación
+3. Gestión de sesiones mediante middleware
+
+## Despliegue
+
+La aplicación está configurada para ser desplegada en Vercel.
