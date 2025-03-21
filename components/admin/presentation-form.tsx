@@ -42,6 +42,15 @@ export default function PresentationForm({ user }: { user: any }) {
         .replace(/[^\w\s]/gi, "")
         .replace(/\s+/g, "-")
 
+      // Verificar que el usuario esté autenticado
+      if (!user || !user.id) {
+        setError("Usuario no autenticado. Por favor, inicia sesión nuevamente.")
+        setIsSubmitting(false)
+        return
+      }
+
+      console.log("Inserting presentation with user ID:", user.id)
+      
       const { error } = await supabase.from("presentations").insert({
         slug,
         prospect_name: formData.prospectName,
@@ -49,10 +58,13 @@ export default function PresentationForm({ user }: { user: any }) {
         price: data.price,
         promotion_end_date: data.promotionEndDate ? new Date(data.promotionEndDate).toISOString() : null,
         whatsapp_link: data.whatsappLink,
-        created_by: user.id,
+        created_by: user.id
       })
 
-      if (error) throw error
+      if (error) {
+        console.error("Error inserting presentation:", error)
+        throw error
+      }
 
       const url = `${window.location.origin}/${slug}`
       setPresentationUrl(url)
