@@ -16,8 +16,8 @@ Aplicación web para presentaciones de marketplaces desarrollada con Next.js y S
 2. Instala las dependencias: `npm install --legacy-peer-deps`
 3. Crea un archivo `.env.local` con las siguientes variables:
    ```
-   NEXT_PUBLIC_SUPABASE_URL=https://nhzmsnrfapwziagjjewo.supabase.co
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5oem1zbnJmYXB3emlhZ2pqZXdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI1Njk3OTYsImV4cCI6MjA1ODE0NTc5Nn0.zcpFrIwozoUmzdefSUBLU0_VBFWmkjoHV3pax8sKPYo
+   NEXT_PUBLIC_SUPABASE_URL=tu_url_de_supabase
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_clave_anonima_de_supabase
    ```
 4. Ejecuta el servidor de desarrollo: `npm run dev`
 
@@ -28,3 +28,15 @@ Aplicación web para presentaciones de marketplaces desarrollada con Next.js y S
 - `/lib`: Utilidades y configuración de Supabase
 - `/public`: Archivos estáticos
 - `/styles`: Estilos globales
+
+## Autenticación
+
+La aplicación utiliza Supabase para la autenticación con Google. El flujo de autenticación incluye:
+
+1. Inicio de sesión con OAuth (Google)
+2. Manejo de callback de autenticación
+3. Gestión de sesiones mediante middleware
+
+## Despliegue
+
+La aplicación está configurada para ser desplegada en Vercel.
