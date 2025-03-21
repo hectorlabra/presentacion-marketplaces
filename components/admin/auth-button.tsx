@@ -7,11 +7,9 @@ export default function AuthButton({ user }: { user?: any }) {
   const supabase = createClientComponentClient()
 
   const handleLogin = async () => {
-    // Usar la URL completa en producción
-    const isProduction = window.location.host.includes('innovare.lat') || window.location.host.includes('vercel.app')
-    const redirectUrl = isProduction
-      ? 'https://presentacion.innovare.lat/auth/callback'
-      : `${window.location.origin}/auth/callback`
+    // Siempre usar URL absoluta para producción
+    // En producción, forzar la URL completa sin depender de window.location
+    const redirectUrl = 'https://presentacion.innovare.lat/auth/callback'
     
     console.log('Using redirect URL:', redirectUrl)
     
