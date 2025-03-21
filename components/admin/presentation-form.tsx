@@ -61,14 +61,15 @@ export default function PresentationForm({ user }: { user: any }) {
       const userId = session?.user?.id || user.id
       console.log("Usando ID:", userId)
       
-      const { error } = await supabase.from("presentations").insert({
-        slug,
-        prospect_name: formData.prospectName,
-        challenge_fields: formData.challengeFields,
-        price: data.price,
-        promotion_end_date: data.promotionEndDate ? new Date(data.promotionEndDate).toISOString() : null,
-        whatsapp_link: data.whatsappLink,
-        created_by: userId
+      // Usar la función RPC en lugar de inserción directa
+      const { data: insertedData, error } = await supabase.rpc('insert_presentation', {
+        p_slug: slug,
+        p_prospect_name: formData.prospectName,
+        p_challenge_fields: formData.challengeFields,
+        p_price: data.price,
+        p_promotion_end_date: data.promotionEndDate ? new Date(data.promotionEndDate).toISOString() : null,
+        p_whatsapp_link: data.whatsappLink,
+        p_created_by: userId
       })
 
       if (error) {
