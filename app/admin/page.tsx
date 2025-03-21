@@ -1,21 +1,25 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { supabase } from "@/lib/supabase"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import AuthButton from "@/components/admin/auth-button"
 import PresentationForm from "@/components/admin/presentation-form"
 
 export default function AdminPage() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const supabase = createClientComponentClient()
 
   useEffect(() => {
     const getUser = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      setUser(session?.user || null)
-      setLoading(false)
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        setUser(session?.user || null)
+      } catch (error) {
+        console.error('Error getting session:', error)
+      } finally {
+        setLoading(false)
+      }
     }
 
     getUser()

@@ -1,20 +1,23 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { supabase } from "@/lib/supabase"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 
 export default function AuthButton({ user }: { user?: any }) {
+  const supabase = createClientComponentClient()
+
   const handleLogin = async () => {
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/admin`,
+        redirectTo: `${window.location.origin}/auth/callback`,
       },
     })
   }
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
+    window.location.href = "/admin"
   }
 
   return user ? (

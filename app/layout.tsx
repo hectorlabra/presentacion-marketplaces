@@ -31,9 +31,9 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="es" className={`${montserrat.variable} ${inter.variable}`}>
-      <body>
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+    <html lang="es" className={`${montserrat.variable} ${inter.variable}`} suppressHydrationWarning>
+      <body className="bg-black">
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
           {children}
         </ThemeProvider>
       </body>
