@@ -16,10 +16,15 @@ export async function GET(request: NextRequest) {
       await supabase.auth.exchangeCodeForSession(code)
     } catch (error) {
       console.error('Error exchanging code for session:', error)
-      return NextResponse.redirect(new URL('/auth-error', request.url))
+      return NextResponse.redirect(new URL('/auth-error', requestUrl.origin))
     }
   }
 
   // URL to redirect to after sign in process completes
-  return NextResponse.redirect(new URL('/admin', request.url))
+  // Usar la URL completa para asegurar la redirección correcta
+  const redirectUrl = process.env.NODE_ENV === 'production'
+    ? 'https://presentacion.innovare.lat/admin'
+    : new URL('/admin', requestUrl.origin).toString()
+  
+  return NextResponse.redirect(redirectUrl)
 }

@@ -7,10 +7,15 @@ export default function AuthButton({ user }: { user?: any }) {
   const supabase = createClientComponentClient()
 
   const handleLogin = async () => {
+    // Usar la URL completa en producción
+    const redirectUrl = process.env.NODE_ENV === 'production'
+      ? 'https://presentacion.innovare.lat/auth/callback'
+      : `${window.location.origin}/auth/callback`
+    
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: redirectUrl,
       },
     })
   }

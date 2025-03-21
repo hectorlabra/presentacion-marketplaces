@@ -3,6 +3,11 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export async function middleware(req: NextRequest) {
+  // Redireccionar la ruta principal a /admin
+  if (req.nextUrl.pathname === '/') {
+    return NextResponse.redirect(new URL('/admin', req.url))
+  }
+
   const res = NextResponse.next()
   const supabase = createMiddlewareClient({ req, res })
   
