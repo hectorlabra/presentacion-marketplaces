@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
 import AuthButton from "@/components/admin/auth-button"
 import PresentationForm from "@/components/admin/presentation-form"
-import Logo from "@/components/logo"
 
 export default function AdminPage() {
   const [user, setUser] = useState<any>(null)
@@ -42,9 +41,6 @@ export default function AdminPage() {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center p-4 bg-black">
         <div className="w-full max-w-md">
-          <div className="mb-8 flex justify-center">
-            <Logo className="h-12 w-auto" />
-          </div>
           <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-8 shadow-lg">
             <h1 className="mb-6 text-2xl font-bold text-white text-center">Panel de Administración</h1>
             <p className="mb-6 text-sm text-zinc-400 text-center">
@@ -63,7 +59,6 @@ export default function AdminPage() {
     <div className="min-h-screen bg-black p-4 md:p-8">
       <div className="mx-auto max-w-4xl">
         <div className="mb-8 flex items-center justify-between">
-          <Logo className="h-8 w-auto" />
           <AuthButton user={user} />
         </div>
 
