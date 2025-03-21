@@ -21,10 +21,12 @@ export async function GET(request: NextRequest) {
   }
 
   // URL to redirect to after sign in process completes
-  // Usar la URL completa para asegurar la redirección correcta
-  const redirectUrl = process.env.NODE_ENV === 'production'
+  // Usar siempre la URL absoluta para evitar problemas de redirección
+  const isProduction = requestUrl.host.includes('innovare.lat') || requestUrl.host.includes('vercel.app')
+  const redirectUrl = isProduction
     ? 'https://presentacion.innovare.lat/admin'
     : new URL('/admin', requestUrl.origin).toString()
   
+  console.log('Redirecting to:', redirectUrl)
   return NextResponse.redirect(redirectUrl)
 }

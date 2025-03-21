@@ -8,9 +8,12 @@ export default function AuthButton({ user }: { user?: any }) {
 
   const handleLogin = async () => {
     // Usar la URL completa en producción
-    const redirectUrl = process.env.NODE_ENV === 'production'
+    const isProduction = window.location.host.includes('innovare.lat') || window.location.host.includes('vercel.app')
+    const redirectUrl = isProduction
       ? 'https://presentacion.innovare.lat/auth/callback'
       : `${window.location.origin}/auth/callback`
+    
+    console.log('Using redirect URL:', redirectUrl)
     
     await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -22,7 +25,14 @@ export default function AuthButton({ user }: { user?: any }) {
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
-    window.location.href = "/admin"
+    
+    const isProduction = window.location.host.includes('innovare.lat') || window.location.host.includes('vercel.app')
+    const redirectUrl = isProduction
+      ? 'https://presentacion.innovare.lat/admin'
+      : '/admin'
+    
+    console.log('Logout redirecting to:', redirectUrl)
+    window.location.href = redirectUrl
   }
 
   return user ? (
