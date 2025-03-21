@@ -49,7 +49,17 @@ export default function PresentationForm({ user }: { user: any }) {
         return
       }
 
-      console.log("Inserting presentation with user ID:", user.id)
+      console.log("Usuario autenticado:", user)
+      console.log("ID del usuario:", user.id)
+      
+      // Intentar obtener la sesión actual para verificar el ID del usuario
+      const { data: { session } } = await supabase.auth.getSession()
+      console.log("Sesión actual:", session)
+      console.log("ID del usuario en la sesión:", session?.user?.id)
+      
+      // Usar el ID del usuario de la sesión si está disponible
+      const userId = session?.user?.id || user.id
+      console.log("Usando ID:", userId)
       
       const { error } = await supabase.from("presentations").insert({
         slug,
@@ -58,7 +68,7 @@ export default function PresentationForm({ user }: { user: any }) {
         price: data.price,
         promotion_end_date: data.promotionEndDate ? new Date(data.promotionEndDate).toISOString() : null,
         whatsapp_link: data.whatsappLink,
-        created_by: user.id
+        created_by: userId
       })
 
       if (error) {
