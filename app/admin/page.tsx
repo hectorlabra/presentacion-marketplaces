@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import AuthButton from "@/components/admin/auth-button"
 import PresentationForm from "@/components/admin/presentation-form"
+import { logSecurityEvent, setupSessionMonitoring } from "@/lib/auth-security"
 
 export default function AdminPage() {
   const [user, setUser] = useState<any>(null)
@@ -14,7 +15,28 @@ export default function AdminPage() {
     const getUser = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession()
-        setUser(session?.user || null)
+        const currentUser = session?.user || null
+        setUser(currentUser)
+        
+        // Registrar evento de seguridad si hay un usuario activo
+        if (currentUser) {
+          // Obtener información del navegador
+          const userAgent = navigator.userAgent
+          const ipAddress = 'client-side' // No podemos obtener la IP real del cliente desde el navegador
+          
+          // Registrar evento de inicio de sesión exitoso
+          logSecurityEvent({
+            event_type: 'login_success',
+            user_id: currentUser.id,
+            email: currentUser.email,
+            user_agent: userAgent,
+            ip_address: ipAddress,
+            metadata: {
+              provider: currentUser.app_metadata?.provider || 'unknown',
+              last_sign_in: currentUser.last_sign_in_at
+            }
+          })
+        }
       } catch (error) {
         console.error('Error getting session:', error)
       } finally {
@@ -24,14 +46,45 @@ export default function AdminPage() {
 
     getUser()
 
+    // Configurar monitoreo de sesión para detectar cambios sospechosos
+    const sessionMonitor = setupSessionMonitoring((event) => {
+      // Manejar eventos sospechosos
+      if (event.type === 'suspicious_activity') {
+        console.warn('Actividad sospechosa detectada:', event.details)
+        // Aquí podríamos mostrar una alerta al usuario o tomar otras acciones
+      }
+    })
+
+    // Escuchar cambios en el estado de autenticación
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user || null)
+      
+      // Registrar eventos de autenticación
+      if (event === 'SIGNED_IN') {
+        logSecurityEvent({
+          event_type: 'login_success',
+          user_id: session?.user?.id,
+          email: session?.user?.email,
+          user_agent: navigator.userAgent,
+          metadata: { auth_event: event }
+        })
+      } else if (event === 'SIGNED_OUT') {
+        logSecurityEvent({
+          event_type: 'logout',
+          user_id: user?.id, // Usar el usuario anterior
+          email: user?.email,
+          user_agent: navigator.userAgent,
+          metadata: { auth_event: event }
+        })
+      }
     })
 
     return () => {
+      // Limpiar suscripciones
       authListener.subscription.unsubscribe()
+      sessionMonitor.stop()
     }
-  }, [])
+  }, [user])
 
   if (loading) {
     return (
