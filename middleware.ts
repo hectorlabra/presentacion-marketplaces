@@ -1,34 +1,100 @@
 import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { detectAutomatedAttack, generateBlockResponse, isSuspiciousPath } from './lib/security-utils'
 
 // Almacenamiento en memoria para rate limiting (en un entorno de producción usar Redis)
 const loginAttempts: Record<string, { count: number, timestamp: number }> = {}
+const requestCounts: Record<string, { count: number, timestamp: number, blockedUntil?: number }> = {}
 
 // Configuración de seguridad
-const RATE_LIMIT_MAX_ATTEMPTS = 5 // Máximo número de intentos
-const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000 // Ventana de tiempo (15 minutos)
+const RATE_LIMIT_MAX_ATTEMPTS = 5 // Máximo número de intentos de login
+const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000 // Ventana de tiempo para login (15 minutos)
 const SESSION_MAX_AGE_SECONDS = 12 * 60 * 60 // 12 horas
 const PROTECTED_ROUTES = ['/admin', '/api/protected']
 
-export async function middleware(req: NextRequest) {
-  // Redireccionar la ruta principal a /admin
-  if (req.nextUrl.pathname === '/') {
-    return NextResponse.redirect(new URL('/admin', req.url))
-  }
+// Configuración de rate limiting general
+const GLOBAL_RATE_LIMIT = {
+  MAX_REQUESTS: 100, // Máximo número de solicitudes
+  WINDOW_MS: 60 * 1000, // Ventana de tiempo (1 minuto)
+  BLOCK_DURATION_MS: 5 * 60 * 1000, // Duración del bloqueo (5 minutos)
+}
 
-  const res = NextResponse.next()
-  const supabase = createMiddlewareClient({ req, res })
-  
+// Configuración de rate limiting para APIs
+const API_RATE_LIMIT = {
+  MAX_REQUESTS: 30, // Máximo número de solicitudes a APIs
+  WINDOW_MS: 60 * 1000, // Ventana de tiempo (1 minuto)
+  BLOCK_DURATION_MS: 10 * 60 * 1000, // Duración del bloqueo (10 minutos)
+}
+
+export async function middleware(req: NextRequest) {
   // Obtener la IP del cliente (usar X-Forwarded-For en producción con proxy)
   const clientIp = req.headers.get('x-forwarded-for') || 
                   req.headers.get('x-real-ip') || 
                   'unknown'
+  const userAgent = req.headers.get('user-agent') || 'unknown'
+  const path = req.nextUrl.pathname
+  const method = req.method
+  const now = Date.now()
   
-  // Verificar rate limiting para rutas de autenticación
-  if (req.nextUrl.pathname.startsWith('/auth') && req.method === 'POST') {
-    const now = Date.now()
+  // 1. Detección de ataques automatizados
+  const attackDetection = detectAutomatedAttack(userAgent, path, method, req.headers)
+  if (attackDetection.isAttack) {
+    console.warn(`Ataque bloqueado: ${attackDetection.reason} desde ${clientIp}`)
+    return generateBlockResponse(attackDetection.reason || 'Suspicious activity')
+  }
+  
+  // 2. Rate limiting global por IP
+  if (!requestCounts[clientIp]) {
+    requestCounts[clientIp] = { count: 0, timestamp: now }
+  }
+  
+  // Verificar si la IP está bloqueada
+  if (requestCounts[clientIp].blockedUntil && requestCounts[clientIp].blockedUntil > now) {
+    const remainingSeconds = Math.ceil((requestCounts[clientIp].blockedUntil! - now) / 1000)
+    return new NextResponse(JSON.stringify({ error: 'Rate limit exceeded' }), {
+      status: 429,
+      headers: {
+        'Content-Type': 'application/json',
+        'Retry-After': remainingSeconds.toString()
+      }
+    })
+  }
+  
+  // Limpiar contadores antiguos
+  if (now - requestCounts[clientIp].timestamp > GLOBAL_RATE_LIMIT.WINDOW_MS) {
+    requestCounts[clientIp] = { count: 0, timestamp: now }
+  }
+  
+  // Incrementar contador
+  requestCounts[clientIp].count++
+  
+  // 3. Rate limiting específico para APIs
+  const isApiRequest = path.startsWith('/api/')
+  const maxRequests = isApiRequest ? API_RATE_LIMIT.MAX_REQUESTS : GLOBAL_RATE_LIMIT.MAX_REQUESTS
+  const blockDuration = isApiRequest ? API_RATE_LIMIT.BLOCK_DURATION_MS : GLOBAL_RATE_LIMIT.BLOCK_DURATION_MS
+  
+  // Si excede el límite, bloquear la solicitud
+  if (requestCounts[clientIp].count > maxRequests) {
+    // Bloquear la IP por un tiempo
+    requestCounts[clientIp].blockedUntil = now + blockDuration
     
+    return new NextResponse(JSON.stringify({ error: 'Rate limit exceeded' }), {
+      status: 429,
+      headers: {
+        'Content-Type': 'application/json',
+        'Retry-After': Math.ceil(blockDuration / 1000).toString()
+      }
+    })
+  }
+  
+  // 4. Redireccionar la ruta principal a /admin
+  if (path === '/') {
+    return NextResponse.redirect(new URL('/admin', req.url))
+  }
+  
+  // 5. Rate limiting para rutas de autenticación
+  if (path.startsWith('/auth') && method === 'POST') {
     // Limpiar entradas antiguas
     Object.keys(loginAttempts).forEach(ip => {
       if (now - loginAttempts[ip].timestamp > RATE_LIMIT_WINDOW_MS) {
@@ -55,14 +121,17 @@ export async function middleware(req: NextRequest) {
     }
   }
   
-  // Verificar y renovar la sesión
+  // 6. Preparar respuesta y cliente Supabase
+  const res = NextResponse.next()
+  const supabase = createMiddlewareClient({ req, res })
+  
+  // 7. Verificar y renovar la sesión
   const { data: { session } } = await supabase.auth.getSession()
   
-  // Para rutas protegidas, realizar verificaciones adicionales
-  if (session && PROTECTED_ROUTES.some(route => req.nextUrl.pathname.startsWith(route))) {
+  // 8. Para rutas protegidas, realizar verificaciones adicionales
+  if (session && PROTECTED_ROUTES.some(route => path.startsWith(route))) {
     // Verificar tiempo de expiración de la sesión usando expires_at
     const expiresAt = session.expires_at ? new Date(session.expires_at * 1000).getTime() : 0
-    const now = Date.now()
     
     // Si la sesión está próxima a expirar (menos de 1 hora) o ya expiró
     if (expiresAt - now < 3600 * 1000 || expiresAt < now) {
@@ -72,10 +141,15 @@ export async function middleware(req: NextRequest) {
     }
     
     // Almacenar IP en la sesión para futuras verificaciones
-    // Esto requiere una tabla personalizada en Supabase para almacenar IPs de sesión
-    // Por ahora, solo lo registramos en encabezados seguros
     res.headers.set('X-Session-IP', clientIp)
+    
+    // Añadir encabezados de seguridad adicionales para rutas protegidas
+    res.headers.set('Cache-Control', 'no-store, max-age=0')
+    res.headers.set('Pragma', 'no-cache')
   }
+  
+  // 9. Añadir encabezado para seguimiento de tiempo entre solicitudes
+  res.headers.set('x-last-request-time', now.toString())
   
   return res
 }
