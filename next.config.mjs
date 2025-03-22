@@ -1,3 +1,13 @@
+// Importar y ejecutar el validador de variables de entorno
+import { validateEnv } from './lib/env-validator.js';
+
+// Validar variables de entorno durante la construcción
+const isEnvValid = validateEnv();
+if (!isEnvValid && process.env.NODE_ENV === 'production') {
+  console.error('❌ Error: Variables de entorno inválidas. La construcción se detendrá.');
+  process.exit(1);
+}
+
 let userConfig = undefined
 try {
   userConfig = await import('./v0-user-next.config')

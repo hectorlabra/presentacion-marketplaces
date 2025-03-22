@@ -21,8 +21,7 @@ const inter = Inter({
 
 export const metadata = {
   title: "Innovare - Lanza tu Marketplace en 30 días",
-  description: "Crea tu marketplace rentable con tráfico orgánico y monetización desde el día 1",
-    generator: 'v0.dev'
+  description: "Crea tu marketplace rentable con tráfico orgánico y monetización desde el día 1"
 }
 
 export default function RootLayout({
