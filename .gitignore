@@ -26,6 +26,7 @@ yarn-error.log*
 .env*.local
 .env
 .env.production
+.env.development
 
 # vercel
 .vercel
@@ -42,3 +43,34 @@ SUPABASE_*.md
 *secrets*.md
 *credentials*.md
 *auth*.md
+*key*.md
+*KEY*.md
+*token*.md
+*TOKEN*.md
+
+# Directorios duplicados o incorrectos
+/Documents
+
+# Logs y backups
+*.log
+*.bak
+*.backup
+*.swp
+
+# Archivos de configuración local IDE
+.idea/
+.vscode/
+*.sublime-*
+
+# Archivos temporales
+*.tmp
+*~
+.~*
+
+# Certificados y claves
+*.pem
+*.key
+*.crt
+*.cer
+*.p12
+*.pfx

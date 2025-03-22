@@ -13,6 +13,7 @@
     "security:validate": "node -e \"require('./lib/env-validator.js').validateEnv()\"",
     "security:pentest": "node scripts/penetration-test.js",
     "security:pentest:high": "node scripts/penetration-test.js --level=high",
+    "security:clean": "node scripts/clean-repo.js",
     "prebuild": "npm run security:validate"
   },
   "dependencies": {
