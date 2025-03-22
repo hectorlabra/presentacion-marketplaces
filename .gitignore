@@ -24,6 +24,8 @@ yarn-error.log*
 
 # local env files
 .env*.local
+.env
+.env.production
 
 # vercel
 .vercel
@@ -31,3 +33,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Archivos de configuración sensibles
+*config*.md
+*CONFIG*.md
+supabase-*.md
+SUPABASE_*.md
+*secrets*.md
+*credentials*.md
+*auth*.md
