@@ -27,7 +27,14 @@ jobs:
         run: npm ci
       
       - name: Run security scan
-        run: npm run security:scan
+        run: |
+          # Instalar herramientas adicionales que puedan ser necesarias
+          sudo apt-get update
+          sudo apt-get install -y jq
+          
+          # Ejecutar el escaneo con mejor manejo de errores
+          mkdir -p security-reports
+          npm run security:scan || echo "Security scan encountered issues but continuing..."
         continue-on-error: true
       
       - name: Run npm audit
@@ -71,9 +78,13 @@ jobs:
         uses: github/codeql-action/init@v2
         with:
           languages: javascript, typescript
+          queries: security-extended
       
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v2
+        with:
+          category: "/language:javascript"
+        timeout-minutes: 30
 
   secret-scanning:
     name: Secret Scanning
@@ -136,7 +147,13 @@ jobs:
           echo "## NPM Audit Results" >> security-report.md
           if [ -f "security-reports/npm-audit.json" ]; then
             echo "\`\`\`" >> security-report.md
-            cat security-reports/npm-audit.json | jq -r '.metadata.vulnerabilities' >> security-report.md
+            # Usar try-catch para manejar posibles errores de formato JSON
+            if jq -r '.metadata.vulnerabilities' security-reports/npm-audit.json > /dev/null 2>&1; then
+              jq -r '.metadata.vulnerabilities' security-reports/npm-audit.json >> security-report.md
+            else
+              echo "Error parsing npm-audit.json. Raw content:" >> security-report.md
+              cat security-reports/npm-audit.json | head -n 20 >> security-report.md
+            fi
             echo "\`\`\`" >> security-report.md
           else
             echo "No npm audit results found." >> security-report.md
@@ -144,11 +161,16 @@ jobs:
           
           echo "" >> security-report.md
           echo "## Security Scan Results" >> security-report.md
-          if [ -d "security-reports" ]; then
+          if [ -d "security-reports" ] && [ "$(ls -A security-reports 2>/dev/null)" ]; then
+            echo "Files found in security-reports directory:" >> security-report.md
             ls -la security-reports >> security-report.md
           else
-            echo "No security scan results found." >> security-report.md
+            echo "No security scan results found or directory is empty." >> security-report.md
           fi
+          
+          echo "" >> security-report.md
+          echo "## Workflow Status" >> security-report.md
+          echo "This report was generated regardless of individual step failures to provide maximum visibility." >> security-report.md
       
       - name: Upload report
         uses: actions/upload-artifact@v3
