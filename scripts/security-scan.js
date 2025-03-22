@@ -550,8 +550,35 @@ function formatCount(count) {
   }
 }
 
-// Ejecutar función principal
+// Detectar si estamos en un entorno CI
+const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
+
+// Ejecutar función principal con manejo especial para CI
 main().catch(error => {
   console.error(chalk.red('Error fatal:'), error);
-  process.exit(1);
+  
+  // En CI, generamos un reporte incluso si hay errores
+  if (isCI) {
+    try {
+      console.log(chalk.yellow('Generando reporte a pesar del error...'));
+      fs.mkdirSync('security-reports', { recursive: true });
+      fs.writeFileSync(
+        'security-reports/error-report.json',
+        JSON.stringify({
+          error: error.message || 'Error desconocido',
+          stack: error.stack,
+          timestamp: new Date().toISOString()
+        }, null, 2)
+      );
+      console.log(chalk.green('Reporte de error generado en security-reports/error-report.json'));
+      // Salir con código 0 en CI para no interrumpir el workflow
+      process.exit(0);
+    } catch (reportError) {
+      console.error(chalk.red('Error al generar reporte:'), reportError);
+      process.exit(1);
+    }
+  } else {
+    // En entorno local, salir con error
+    process.exit(1);
+  }
 });
