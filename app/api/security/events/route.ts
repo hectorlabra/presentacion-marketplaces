@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase-server';
 import { SecurityEventType, SecurityEventSeverity } from '@/lib/security-logger';
 
 export async function GET(request: Request) {
@@ -76,8 +76,7 @@ export async function GET(request: Request) {
     // Obtener estadísticas
     const { data: stats, error: statsError } = await supabase
       .from('security_events')
-      .select('severity, count(*)')
-      .group('severity');
+      .select('severity, count', { count: 'exact' });
 
     if (statsError) {
       console.error('Error al obtener estadísticas:', statsError);

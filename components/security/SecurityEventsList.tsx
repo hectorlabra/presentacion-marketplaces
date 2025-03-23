@@ -50,19 +50,19 @@ export default function SecurityEventsList({
 
   // Función para obtener el icono según el tipo de evento
   const getEventTypeIcon = (type: SecurityEventType) => {
-    switch (type) {
-      case 'authentication':
-        return <Shield className="h-4 w-4 mr-1" />;
-      case 'access':
-        return <AlertCircle className="h-4 w-4 mr-1" />;
-      case 'data':
-        return <Info className="h-4 w-4 mr-1" />;
-      case 'system':
-        return <Bug className="h-4 w-4 mr-1" />;
-      case 'suspicious':
-        return <AlertTriangle className="h-4 w-4 mr-1" />;
-      default:
-        return <Info className="h-4 w-4 mr-1" />;
+    // Determinar la categoría basada en el prefijo del tipo de evento
+    if (type.startsWith('auth.')) {
+      return <Shield className="h-4 w-4 mr-1" />;
+    } else if (type.startsWith('access.')) {
+      return <AlertCircle className="h-4 w-4 mr-1" />;
+    } else if (type.startsWith('data.')) {
+      return <Info className="h-4 w-4 mr-1" />;
+    } else if (type.startsWith('system.')) {
+      return <Bug className="h-4 w-4 mr-1" />;
+    } else if (type.startsWith('security.')) {
+      return <AlertTriangle className="h-4 w-4 mr-1" />;
+    } else {
+      return <Info className="h-4 w-4 mr-1" />;
     }
   };
 
