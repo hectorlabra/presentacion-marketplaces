@@ -5,7 +5,7 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { useRouter } from "next/navigation"
 import {
   LayoutDashboard,
-  FilePresentation,
+  FileText,
   Settings,
   LogOut
 } from "lucide-react"
@@ -26,24 +26,54 @@ export default function AdminLayout({
   children: React.ReactNode
 }) {
   const [user, setUser] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
   const router = useRouter()
   const supabase = createClientComponentClient()
 
   useEffect(() => {
     const getUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      setUser(session?.user || null)
-      if (!session?.user) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        setUser(session?.user || null)
+        if (!session?.user) {
+          router.push('/login')
+        }
+      } catch (error) {
+        console.error('Error getting session:', error)
         router.push('/login')
+      } finally {
+        setLoading(false)
       }
     }
 
     getUser()
-  }, [])
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user || null)
+      if (!session?.user) {
+        router.push('/login')
+      }
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [router, supabase])
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
     router.push('/login')
+  }
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-zinc-950">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="w-12 h-12 border-t-2 border-b-2 border-green-500 rounded-full animate-spin"></div>
+          <div className="text-zinc-400 text-sm">Cargando...</div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -53,22 +83,22 @@ export default function AdminLayout({
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 justify-between">
             <div className="flex">
-              <div className="flex flex-shrink-0 items-center">
-                <span className="text-xl font-bold text-white">Panel de Admin</span>
-              </div>
-              <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
+
+              <div className="hidden sm:ml-6 sm:flex sm:items-center sm:space-x-4">
                 <Button
                   variant="ghost"
-                  className="inline-flex items-center border-b-2 border-transparent px-1 pt-1 text-sm font-medium text-zinc-300 hover:border-zinc-300 hover:text-white"
+                  className="flex items-center h-10 px-4 py-2 text-sm font-medium text-zinc-300 hover:bg-zinc-800 hover:text-white rounded-md"
+                  onClick={() => router.push('/admin')}
                 >
                   <LayoutDashboard className="mr-2 h-4 w-4" />
                   Dashboard
                 </Button>
                 <Button
                   variant="ghost"
-                  className="inline-flex items-center border-b-2 border-transparent px-1 pt-1 text-sm font-medium text-zinc-300 hover:border-zinc-300 hover:text-white"
+                  className="flex items-center h-10 px-4 py-2 text-sm font-medium text-zinc-300 hover:bg-zinc-800 hover:text-white rounded-md"
+                  onClick={() => router.push('/admin/presentations')}
                 >
-                  <FilePresentation className="mr-2 h-4 w-4" />
+                  <FileText className="mr-2 h-4 w-4" />
                   Presentaciones
                 </Button>
               </div>
