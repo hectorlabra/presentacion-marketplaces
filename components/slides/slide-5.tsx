@@ -11,7 +11,7 @@ export default function Slide5() {
       <div className="relative z-10 max-w-5xl mx-auto">
         <div className="flex flex-col md:flex-row gap-12">
           <div className="md:w-1/3">
-            <h2 className="text-3xl md:text-4xl font-display font-bold tracking-wider mb-6 text-white">
+            <h2 className="text-2xl md:text-3xl font-display font-bold tracking-wider mb-6 text-white">
               Tu MVP en <span className="text-neon-green">30 Días</span>: Funcionalidades Listas para Crecer
             </h2>
 

@@ -17,7 +17,7 @@ export default function Slide3({ challengeFields = ["", "", "", "", "", ""] }: S
       <div className="relative z-10 max-w-5xl mx-auto">
         <div className="flex flex-col md:flex-row gap-12">
           <div className="md:w-1/2">
-            <h2 className="text-3xl md:text-4xl font-display font-bold tracking-wider mb-8 text-white">
+            <h2 className="text-2xl md:text-3xl font-display font-bold tracking-wider mb-8 text-white">
               Tu Proyecto de <span className="text-neon-green">Marketplace</span>: Identificando los Desafíos y
               Oportunidades
             </h2>
@@ -166,7 +166,7 @@ export default function Slide3({ challengeFields = ["", "", "", "", "", ""] }: S
                 <div className="mt-1 bg-neon-green/10 p-1 rounded-full border border-neon-green/30">
                   <Check className="h-4 w-4 text-neon-green" />
                 </div>
-                <p className="text-sm text-zinc-300 font-light tracking-wide">
+                <p className="text-xs text-zinc-300 font-light tracking-wide">
                   <span className="font-medium text-white">Canal de Distribución para Pymes</span> – Busca conectar
                   pequeñas empresas sin red de ventas con clientes en LATAM.
                 </p>
@@ -176,7 +176,7 @@ export default function Slide3({ challengeFields = ["", "", "", "", "", ""] }: S
                 <div className="mt-1 bg-neon-green/10 p-1 rounded-full border border-neon-green/30">
                   <Check className="h-4 w-4 text-neon-green" />
                 </div>
-                <p className="text-sm text-zinc-300 font-light tracking-wide">
+                <p className="text-xs text-zinc-300 font-light tracking-wide">
                   <span className="font-medium text-white">Plataforma Escalable y Eficiente</span> – Necesita una
                   solución robusta que elimine los problemas de pagos y logística.
                 </p>

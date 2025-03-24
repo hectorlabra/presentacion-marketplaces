@@ -9,7 +9,7 @@ export default function Slide8() {
       </div>
 
       <div className="relative z-10 max-w-5xl mx-auto">
-        <h2 className="text-3xl md:text-4xl font-display font-bold tracking-wider mb-8 text-white text-center">
+        <h2 className="text-2xl md:text-3xl font-display font-bold tracking-wider mb-8 text-white text-center">
           Pack de <span className="text-neon-green">Bonos</span>: Escala Tu Marketplace Más Rápido
         </h2>
 
