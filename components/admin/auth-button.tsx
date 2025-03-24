@@ -8,8 +8,16 @@ export default function AuthButton({ user, redirectAfterLogin = '/admin' }: { us
 
   const handleLogin = async () => {
     try {
-      // Obtener la URL del sitio desde las variables de entorno
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+      // Obtener la URL del sitio
+      let siteUrl;
+      
+      if (typeof window !== 'undefined') {
+        // En el navegador, usar la URL actual
+        siteUrl = window.location.origin;
+      } else {
+        // En el servidor, usar la variable de entorno o localhost como fallback
+        siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+      }
       
       // Construir URL de redirección explícita
       const redirectUrl = `${siteUrl}/auth/callback`;
