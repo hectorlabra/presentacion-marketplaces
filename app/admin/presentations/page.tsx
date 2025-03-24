@@ -16,22 +16,46 @@ export default function PresentationsPage() {
   useEffect(() => {
     const fetchPresentations = async () => {
       try {
+        // Verificar la sesión del usuario
         const { data: { session } } = await supabase.auth.getSession()
         if (!session?.user) {
           router.push('/login')
           return
         }
         
+        // Verificar la estructura de la tabla
+        const { data: tableInfo, error: tableError } = await supabase
+          .from('presentations')
+          .select('*')
+          .limit(1)
+
+        if (tableError) {
+          console.error('Error verificando tabla:', tableError)
+          setLoading(false)
+          return
+        }
+
+        console.log('Estructura de la tabla:', tableInfo)
+
+        // Obtener las presentaciones del usuario
         const { data, error } = await supabase
           .from('presentations')
           .select('*')
           .eq('user_id', session.user.id)
           .order('created_at', { ascending: false })
 
-        if (error) throw error
+        if (error) {
+          console.error('Error obteniendo presentaciones:', error)
+          setLoading(false)
+          return
+        }
+
+        console.log('Presentaciones obtenidas:', data)
         setPresentations(data || [])
       } catch (error) {
-        console.error('Error fetching presentations:', error)
+        console.error('Error detallado al obtener presentaciones:', error)
+        // Establecer presentaciones como array vacío en caso de error
+        setPresentations([])
       } finally {
         setLoading(false)
       }

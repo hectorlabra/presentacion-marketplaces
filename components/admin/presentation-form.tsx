@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { supabase } from "@/lib/supabase"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { useAuth } from "@/context/auth-context"
 import { Button } from "@/components/ui/button"
 import StepOne from "./step-one"
 import StepTwo from "./step-two"
@@ -13,7 +14,13 @@ interface PresentationFormProps {
   isEditing?: boolean
 }
 
-export default function PresentationForm({ user, initialPresentation, isEditing = false }: PresentationFormProps) {
+export default function PresentationForm({ user: propUser, initialPresentation, isEditing = false }: PresentationFormProps) {
+  const supabase = createClientComponentClient()
+  const { user: authUser, session } = useAuth()
+  
+  // Usar el usuario del contexto de autenticación si está disponible
+  const user = authUser || propUser
+  
   const [step, setStep] = useState(1)
   const [formData, setFormData] = useState({
     prospectName: initialPresentation?.prospect_name || "",
@@ -55,42 +62,21 @@ export default function PresentationForm({ user, initialPresentation, isEditing 
         return
       }
 
-      // Obtener el ID del usuario
-      const userId = user?.id
-      
-      if (!userId) {
-        console.error('No hay usuario autenticado:', { user })
+      // Verificar si tenemos un usuario autenticado a través del contexto
+      if (!authUser || !authUser.id) {
+        console.error('No hay usuario autenticado en el contexto:', { authUser, propUser: user })
         setError("No hay sesión activa. Por favor, inicia sesión nuevamente.")
         setIsSubmitting(false)
         return
       }
+
+      const userId = authUser.id
       
-      // Verificar que la sesión sigue activa
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        
-        // Verificar si tenemos una sesión válida
-        if (!session || !session.user || !session.user.id) {
-          console.error('No se detectó una sesión válida:', { 
-            sessionExists: !!session,
-            userExists: !!session?.user,
-            userId: session?.user?.id || 'no disponible'
-          })
-          setError("No se detectó una sesión válida. Por favor, inicia sesión nuevamente.")
-          setIsSubmitting(false)
-          return
-        }
-        
-        console.log('Sesión válida detectada:', { 
-          email: session.user.email,
-          id: session.user.id
-        })
-      } catch (error) {
-        console.error('Error al verificar la sesión:', error)
-        setError("Error al verificar la sesión. Por favor, intenta nuevamente.")
-        setIsSubmitting(false)
-        return
-      }
+      console.log('Usuario autenticado detectado:', { 
+        email: authUser.email,
+        id: authUser.id,
+        session: !!session
+      })
       
       // Verificar que tenemos un userId válido
       if (!userId) {
@@ -179,7 +165,7 @@ export default function PresentationForm({ user, initialPresentation, isEditing 
             },
             status: 'published',
             url: `/${slug}`,
-            user_id: userId
+            user_id: authUser.id
           };
         } else {
           // Usar campos individuales si no hay columna 'content'
@@ -193,20 +179,18 @@ export default function PresentationForm({ user, initialPresentation, isEditing 
             slug: slug,
             status: 'published',
             url: `/${slug}`,
-            user_id: userId
+            user_id: authUser.id
           };
         }
         
-        // Verificar que la sesión sigue activa y obtener el token actual
-        const { data: { session } } = await supabase.auth.getSession()
-        
-        if (!session) {
-          console.error('No hay sesión activa al intentar crear la presentación')
-          throw new Error("La sesión ha expirado. Por favor, inicia sesión nuevamente.")
+        // Usar el usuario autenticado del contexto
+        if (!authUser || !authUser.id) {
+          console.error('No hay usuario autenticado al intentar crear la presentación')
+          throw new Error("No se pudo obtener el ID de usuario. Por favor, inicia sesión nuevamente.")
         }
 
-        // Usar el ID del usuario de la sesión actual
-        const currentUserId = session.user.id
+        // Usar el ID del usuario del contexto de autenticación
+        const currentUserId = authUser.id
         
         // Actualizar el user_id con el de la sesión actual
         insertData.user_id = currentUserId;
