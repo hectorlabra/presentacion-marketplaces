@@ -2,6 +2,7 @@ import type React from "react"
 import "./globals.css"
 import { Montserrat, Inter } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
+import ClientWrapper from "@/components/client-wrapper"
 
 // Premium, modern font for headings
 const montserrat = Montserrat({
@@ -24,6 +25,8 @@ export const metadata = {
   description: "Crea tu marketplace rentable con tráfico orgánico y monetización desde el día 1"
 }
 
+
+
 export default function RootLayout({
   children,
 }: {
@@ -33,7 +36,9 @@ export default function RootLayout({
     <html lang="es" className={`${montserrat.variable} ${inter.variable}`} suppressHydrationWarning>
       <body className="bg-black">
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
-          {children}
+          <ClientWrapper>
+            {children}
+          </ClientWrapper>
         </ThemeProvider>
       </body>
     </html>

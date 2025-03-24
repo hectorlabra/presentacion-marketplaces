@@ -13,6 +13,9 @@ const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000 // Ventana de tiempo para login (15 
 const SESSION_MAX_AGE_SECONDS = 12 * 60 * 60 // 12 horas
 const PROTECTED_ROUTES = ['/admin', '/api/protected']
 
+// Rutas públicas de autenticación
+const AUTH_ROUTES = ['/login', '/auth/callback']
+
 // Configuración de rate limiting general
 const GLOBAL_RATE_LIMIT = {
   MAX_REQUESTS: 100, // Máximo número de solicitudes
@@ -88,9 +91,9 @@ export async function middleware(req: NextRequest) {
     })
   }
   
-  // 4. Redireccionar la ruta principal a /admin
+  // 4. Redireccionar la ruta principal a /login
   if (path === '/') {
-    return NextResponse.redirect(new URL('/admin', req.url))
+    return NextResponse.redirect(new URL('/login', req.url))
   }
   
   // 5. Rate limiting para rutas de autenticación
@@ -128,16 +131,35 @@ export async function middleware(req: NextRequest) {
   // 7. Verificar y renovar la sesión
   const { data: { session } } = await supabase.auth.getSession()
   
-  // 8. Para rutas protegidas, realizar verificaciones adicionales
-  if (session && PROTECTED_ROUTES.some(route => path.startsWith(route))) {
+  // 8. Para rutas protegidas, verificar si el usuario está autenticado
+  if (PROTECTED_ROUTES.some(route => path.startsWith(route))) {
+    // Si no hay sesión y estamos en una ruta protegida, redirigir a login
+    if (!session) {
+      return NextResponse.redirect(new URL('/login', req.url))
+    }
+    
+    // Si hay sesión, verificar su validez pero solo si realmente ha expirado
     // Verificar tiempo de expiración de la sesión usando expires_at
     const expiresAt = session.expires_at ? new Date(session.expires_at * 1000).getTime() : 0
     
-    // Si la sesión está próxima a expirar (menos de 1 hora) o ya expiró
-    if (expiresAt - now < 3600 * 1000 || expiresAt < now) {
-      // Forzar cierre de sesión si ha expirado
-      await supabase.auth.signOut()
-      return NextResponse.redirect(new URL('/admin', req.url))
+    // Solo si la sesión ha expirado completamente
+    if (expiresAt < now) {
+      console.log('Sesión expirada. Tiempo de expiración:', new Date(expiresAt).toISOString())
+      console.log('Tiempo actual:', new Date(now).toISOString())
+      
+      // Evitar bucle de redirección verificando si ya estamos en una redirección por sesión expirada
+      if (req.nextUrl.searchParams.get('session_expired') !== 'true') {
+        // Forzar cierre de sesión si ha expirado
+        await supabase.auth.signOut()
+        
+        // Obtener la URL base del sitio desde las variables de entorno
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || req.url
+        
+        // Redirigir a /login con parámetro de sesión expirada
+        const redirectUrl = new URL('/login', siteUrl)
+        redirectUrl.searchParams.set('session_expired', 'true')
+        return NextResponse.redirect(redirectUrl)
+      }
     }
     
     // Almacenar IP en la sesión para futuras verificaciones

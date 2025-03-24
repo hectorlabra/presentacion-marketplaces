@@ -3,18 +3,22 @@
 import { Button } from "@/components/ui/button"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 
-export default function AuthButton({ user }: { user?: any }) {
+export default function AuthButton({ user, redirectAfterLogin = '/admin' }: { user?: any; redirectAfterLogin?: string }) {
   const supabase = createClientComponentClient()
 
   const handleLogin = async () => {
     try {
-      // Determinar la URL de redirección basada en el entorno
-      const isProduction = typeof window !== 'undefined' && 
-        (window.location.host.includes('innovare.lat') || window.location.host.includes('vercel.app'))
+      // Obtener la URL del sitio desde las variables de entorno o usar la URL actual
+      const siteUrl = typeof window !== 'undefined' 
+        ? (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:3000'
+            : window.location.origin)
+        : 'http://localhost:3000';
       
-      const redirectUrl = isProduction
-        ? 'https://presentacion.innovare.lat/auth/callback'
-        : `${window.location.origin}/auth/callback`
+      // Construir URL de redirección explícita
+      const redirectUrl = `${siteUrl}/auth/callback`;
+      
+      console.log('URL de redirección para autenticación:', redirectUrl);
       
       // Lista de dominios de correo permitidos (para mayor seguridad)
       const allowedDomains = ['innovare.lat', 'gmail.com']
@@ -35,6 +39,8 @@ export default function AuthButton({ user }: { user?: any }) {
           scopes: 'email profile',
         },
       })
+      
+      console.log('Iniciando sesión con Google...')
     } catch (error) {
       console.error('Error durante el inicio de sesión:', error)
       // Aquí podríamos implementar un sistema de notificación al usuario
@@ -44,13 +50,11 @@ export default function AuthButton({ user }: { user?: any }) {
   const handleLogout = async () => {
     await supabase.auth.signOut()
     
-    const isProduction = window.location.host.includes('innovare.lat') || window.location.host.includes('vercel.app')
-    const redirectUrl = isProduction
-      ? 'https://presentacion.innovare.lat/admin'
-      : '/admin'
+    // Redirigir siempre a /login después de cerrar sesión
+    const loginUrl = '/login'
     
-    console.log('Logout redirecting to:', redirectUrl)
-    window.location.href = redirectUrl
+    console.log('Logout redirecting to:', loginUrl)
+    window.location.href = loginUrl
   }
 
   return user ? (
