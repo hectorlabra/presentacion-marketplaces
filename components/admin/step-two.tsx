@@ -19,13 +19,49 @@ interface StepTwoProps {
 }
 
 export default function StepTwo({ onSubmit, onBack, initialData, isSubmitting }: StepTwoProps) {
-  const [price, setPrice] = useState(initialData.price)
-  const [promotionEndDate, setPromotionEndDate] = useState(initialData.promotionEndDate)
-  const [whatsappLink, setWhatsappLink] = useState(initialData.whatsappLink)
+  // Inicializar datos con valores seguros
+  const [price, setPrice] = useState(initialData?.price || 3000)
+  
+  // Convertir fecha ISO a formato YYYY-MM-DD para el input date
+  const formatDateForInput = (isoDate: string | null | undefined): string => {
+    if (!isoDate) return ""
+    
+    try {
+      const date = new Date(isoDate)
+      // Comprobar que sea una fecha válida
+      if (isNaN(date.getTime())) return ""
+      
+      // Formatear para input date (YYYY-MM-DD)
+      return date.toISOString().split('T')[0]
+    } catch (e) {
+      console.error('Error al formatear fecha para input:', e)
+      return ""
+    }
+  }
+  
+  // Inicializar la fecha con el valor formateado
+  const [promotionEndDate, setPromotionEndDate] = useState(
+    formatDateForInput(initialData?.promotionEndDate)
+  )
+  
+  // Log para depuración
+  console.log('StepTwo - initialData.promotionEndDate:', initialData?.promotionEndDate)
+  console.log('StepTwo - promotionEndDate formateada:', promotionEndDate)
+  
+  const [whatsappLink, setWhatsappLink] = useState(initialData?.whatsappLink || "https://wa.me/")
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    onSubmit({ price, promotionEndDate, whatsappLink })
+    
+    // Validar y formatear datos antes de enviar
+    const formData = {
+      price: price || 3000,
+      promotionEndDate: promotionEndDate ? promotionEndDate : "",
+      whatsappLink: whatsappLink || "https://wa.me/"
+    }
+    
+    console.log('StepTwo - datos a enviar:', formData)
+    onSubmit(formData)
   }
 
   return (
@@ -53,7 +89,10 @@ export default function StepTwo({ onSubmit, onBack, initialData, isSubmitting }:
           id="promotionEndDate"
           type="date"
           value={promotionEndDate}
-          onChange={(e) => setPromotionEndDate(e.target.value)}
+          onChange={(e) => {
+            console.log('Fecha seleccionada:', e.target.value)
+            setPromotionEndDate(e.target.value)
+          }}
           className="mt-1 bg-black border-zinc-800 text-white"
         />
         <p className="mt-1 text-xs text-zinc-400">

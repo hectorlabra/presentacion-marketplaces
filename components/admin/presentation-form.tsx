@@ -22,11 +22,38 @@ export default function PresentationForm({ user: propUser, initialPresentation, 
   const user = authUser || propUser
   
   const [step, setStep] = useState(1)
+  // Función para formatear correctamente la fecha para el input
+  const formatPromotionDate = (dateValue: string | null | undefined): string => {
+    if (!dateValue) return "";
+    try {
+      const date = new Date(dateValue);
+      if (isNaN(date.getTime())) {
+        console.error('Fecha de promoción inválida en initialPresentation:', dateValue);
+        return "";
+      }
+      
+      // Convertir a formato YYYY-MM-DD para el input date
+      return date.toISOString().split('T')[0];
+    } catch (e) {
+      console.error('Error al formatear fecha de promoción:', e);
+      return "";
+    }
+  };
+  
+  // Mostrar en consola para depuración
+  console.log('Datos de initialPresentation:', { 
+    promotion_end_date: initialPresentation?.promotion_end_date,
+    type: initialPresentation?.promotion_end_date ? typeof initialPresentation.promotion_end_date : 'undefined/null'
+  });
+  
+  const formattedPromotionDate = formatPromotionDate(initialPresentation?.promotion_end_date);
+  console.log('Fecha formateada para el input:', formattedPromotionDate);
+  
   const [formData, setFormData] = useState({
     prospectName: initialPresentation?.prospect_name || "",
     challengeFields: initialPresentation?.challenge_fields || ["", "", "", "", "", ""],
     price: initialPresentation?.price || 3000,
-    promotionEndDate: initialPresentation?.promotion_end_date ? new Date(initialPresentation.promotion_end_date).toISOString().split('T')[0] : "",
+    promotionEndDate: formattedPromotionDate,
     whatsappLink: initialPresentation?.whatsapp_link || "",
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -94,6 +121,19 @@ export default function PresentationForm({ user: propUser, initialPresentation, 
         data.whatsappLink = "https://wa.me/";
       }
       
+      // Verificar fecha de promoción
+      if (data.promotionEndDate) {
+        // Validar que la fecha sea futura
+        const promotionDate = new Date(data.promotionEndDate);
+        const today = new Date();
+        if (promotionDate <= today) {
+          console.warn('La fecha de promoción debe ser futura, ajustando a mañana');
+          // Establecer la fecha para mañana
+          today.setDate(today.getDate() + 1);
+          data.promotionEndDate = today.toISOString().split('T')[0];
+        }
+      }
+      
       // Si hay errores de validación, mostrarlos y detener el envío
       if (validationErrors.length > 0) {
         setError(validationErrors.join('\n'));
@@ -129,7 +169,65 @@ export default function PresentationForm({ user: propUser, initialPresentation, 
       console.log('WhatsApp Link después de limpieza:', cleanWhatsappLink);
       
       // Asegurar que la fecha de promoción sea válida o null
-      const cleanPromotionEndDate = data.promotionEndDate ? new Date(data.promotionEndDate).toISOString() : null;
+      // Debemos asegurarnos de que la fecha se guarde correctamente para que el contador funcione
+      let cleanPromotionEndDate = null;
+      console.log('Procesando fecha de promoción:', {
+        rawValue: data.promotionEndDate,
+        type: typeof data.promotionEndDate
+      });
+      
+      if (data.promotionEndDate && data.promotionEndDate.trim() !== '') {
+        try {
+          console.log('La fecha de promoción no está vacía, procesando...');
+          
+          // Convertir la fecha a objeto Date y asegurarnos de que sea el final del día
+          let promotionDate: Date;
+          
+          // Manejar diferentes formatos de fecha
+          if (data.promotionEndDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            // Formato YYYY-MM-DD (desde input date)
+            promotionDate = new Date(data.promotionEndDate + 'T00:00:00');
+            console.log('Fecha en formato YYYY-MM-DD:', promotionDate);
+          } else {
+            // Intentar parsear como ISO o cualquier otro formato
+            promotionDate = new Date(data.promotionEndDate);
+            console.log('Fecha parseada de formato alternativo:', promotionDate);
+          }
+          
+          // Verificar que la fecha sea válida
+          if (isNaN(promotionDate.getTime())) {
+            console.error('Fecha de promoción inválida:', data.promotionEndDate);
+            setError('La fecha de promoción no es válida');
+            throw new Error('La fecha de promoción no es válida');
+          }
+          
+          // Verificar que la fecha sea futura
+          const now = new Date();
+          if (promotionDate <= now) {
+            console.warn('La fecha de promoción debe ser futura, ajustando a mañana');
+            // Establecer la fecha para mañana
+            now.setDate(now.getDate() + 1);
+            promotionDate = new Date(now);
+          }
+          
+          // Establecer al final del día para maximizar el tiempo
+          promotionDate.setHours(23, 59, 59, 999);
+          
+          // Guardar como string ISO
+          cleanPromotionEndDate = promotionDate.toISOString();
+          console.log('Fecha de promoción formateada correctamente:', {
+            original: data.promotionEndDate,
+            formateada: cleanPromotionEndDate,
+            objeto: promotionDate
+          });
+        } catch (e) {
+          console.error('Error procesando fecha de promoción:', e);
+          cleanPromotionEndDate = null;
+        }
+      } else {
+        console.log('No se proporcionó fecha de promoción');
+        cleanPromotionEndDate = null;
+      }
 
       // Generar slug a partir del nombre del prospecto limpio
       const slug = cleanProspectName
@@ -194,42 +292,51 @@ export default function PresentationForm({ user: propUser, initialPresentation, 
         throw new Error('Error al verificar la estructura de la tabla');
       }
       
+      // Analizar estructura detallada
+      console.log('Datos de la tabla presentations:', JSON.stringify(tableInfo, null, 2));
+      
+      // Verificar si hay columnas específicas
+      const columnsPresent = tableInfo && tableInfo.length > 0
+        ? Object.keys(tableInfo[0]).reduce((acc: Record<string, boolean>, key: string) => {
+            acc[key] = true;
+            return acc;
+          }, {})
+        : {};
+      
+      console.log('Columnas presentes en la tabla:', columnsPresent);
+      console.log('¿Existe columna promotion_end_date?', columnsPresent['promotion_end_date'] ? 'SÍ' : 'NO');
+
       // Determinar si debemos usar el campo 'content' o campos individuales
       const hasContentColumn = tableInfo && tableInfo.length > 0 && 'content' in tableInfo[0];
-      console.log('Estructura de la tabla:', tableInfo);
       console.log('¿Tiene columna content?:', hasContentColumn);
+      
+      // Verificar tipo de datos de promotion_end_date si existe
+      if (tableInfo && tableInfo.length > 0 && 'promotion_end_date' in tableInfo[0]) {
+        console.log('Tipo de promotion_end_date:', typeof tableInfo[0].promotion_end_date);
+        console.log('Valor ejemplo de promotion_end_date:', tableInfo[0].promotion_end_date);
+      }
       
       if (isEditing && initialPresentation?.id) {
         // Actualizar presentación existente
         let updateData;
         
-        if (hasContentColumn) {
-          updateData = {
-            title: formData.prospectName,
-            content: {
-              prospect_name: formData.prospectName,
-              challenge_fields: formData.challengeFields,
-              price: data.price,
-              promotion_end_date: data.promotionEndDate ? new Date(data.promotionEndDate).toISOString() : null,
-              whatsapp_link: data.whatsappLink
-            },
-            status: 'published',
-            updated_at: new Date().toISOString()
-          };
-        } else {
-          // Usar campos individuales si no hay columna 'content'
-          updateData = {
-            title: formData.prospectName,
-            prospect_name: formData.prospectName,
-            challenge_fields: formData.challengeFields,
-            price: data.price,
-            promotion_end_date: data.promotionEndDate ? new Date(data.promotionEndDate).toISOString() : null,
-            whatsapp_link: data.whatsappLink,
-            status: 'published',
-            updated_at: new Date().toISOString()
-          };
-        }
+        // IMPORTANTE: Guardar siempre en columnas directas, no en content
+        updateData = {
+          title: formData.prospectName,
+          prospect_name: formData.prospectName,
+          challenge_fields: formData.challengeFields,
+          price: data.price,
+          promotion_end_date: cleanPromotionEndDate,
+          whatsapp_link: data.whatsappLink
+        };
         
+        console.log('Actualizando presentación con datos:', {
+          ...updateData,
+          promotion_end_date_value: cleanPromotionEndDate,
+          promotion_end_date_type: typeof cleanPromotionEndDate
+        });
+        
+        console.log('Enviando datos a Supabase para actualización...');
         const { data: updatedData, error } = await supabase
           .from('presentations')
           .update(updateData)
@@ -239,6 +346,12 @@ export default function PresentationForm({ user: propUser, initialPresentation, 
           
         if (error) {
           console.error('Error actualizando presentación:', error);
+          console.error('Detalles del error de actualización:', { 
+            error_code: error.code,
+            error_details: error.details,
+            error_hint: error.hint,
+            data_sent: updateData
+          });
           throw error;
         }
         result = updatedData;
@@ -350,6 +463,25 @@ export default function PresentationForm({ user: propUser, initialPresentation, 
         setSuccess(`¡Presentación creada con éxito!`);
       }
 
+      // Ver la presentación creada/actualizada
+      console.log('Recuperando presentación guardada para verificar datos...');
+      const { data: savedPresentation, error: fetchError } = await supabase
+        .from('presentations')
+        .select('*')
+        .eq('id', isEditing ? initialPresentation.id : result.id)
+        .single();
+        
+      if (fetchError) {
+        console.error('Error al recuperar presentación guardada:', fetchError);
+      } else {
+        console.log('Presentación recuperada de la BD:', JSON.stringify(savedPresentation, null, 2));
+        console.log('Verificando promotion_end_date guardado:', {
+          valor: savedPresentation.promotion_end_date,
+          tipo: typeof savedPresentation.promotion_end_date,
+          esNull: savedPresentation.promotion_end_date === null
+        });
+      }
+      
       const url = `${window.location.origin}${result.url || `/${slug}`}`;
       setPresentationUrl(url);
       setIsSubmitting(false);
@@ -465,4 +597,3 @@ export default function PresentationForm({ user: propUser, initialPresentation, 
     </Card>
   )
 }
-

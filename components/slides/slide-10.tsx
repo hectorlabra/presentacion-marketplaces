@@ -12,38 +12,105 @@ interface Slide10Props {
 }
 
 export default function Slide10({ price = 3000, promotionEndDate, whatsappLink = "#" }: Slide10Props) {
-  const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; minutes: number; seconds: number } | null>(
-    null,
-  )
-
-  // Calcular tiempo restante si hay fecha de promoción
-  useEffect(() => {
-    if (!promotionEndDate) return
-
-    const calculateTimeLeft = () => {
-      const difference = new Date(promotionEndDate).getTime() - new Date().getTime()
-
-      if (difference > 0) {
-        return {
-          days: Math.floor(difference / (1000 * 60 * 60 * 24)),
-          hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
-          minutes: Math.floor((difference / 1000 / 60) % 60),
-          seconds: Math.floor((difference / 1000) % 60),
-        }
-      }
-
-      return null
+  // Estado para el tiempo restante
+  const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; minutes: number; seconds: number } | null>(null);
+  
+  // Intentar usar la fecha proporcionada o devolver null si no es válida
+  const getValidFutureDate = () => {
+    if (!promotionEndDate) {
+      console.log('No hay fecha de promoción definida');
+      return null;
     }
-
-    setTimeLeft(calculateTimeLeft())
-
+    
+    // Registrar detalles para depuración
+    console.log('Información detallada de promotionEndDate:', {
+      valor: promotionEndDate,
+      tipo: typeof promotionEndDate,
+      esString: typeof promotionEndDate === 'string',
+      longitud: typeof promotionEndDate === 'string' ? promotionEndDate.length : 'N/A'
+    });
+    
+    try {
+      // Intentar parsear la fecha
+      const date = new Date(promotionEndDate);
+      
+      // Verificar si es una fecha válida
+      if (isNaN(date.getTime())) {
+        console.error('La fecha de promoción no es válida:', promotionEndDate);
+        return null;
+      }
+      
+      // Verificar si la fecha ya pasó
+      const now = new Date();
+      if (date <= now) {
+        console.log('La fecha de promoción ya pasó:', {
+          fecha: date.toISOString(),
+          ahora: now.toISOString(),
+          diferencia: (date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24) + ' días'
+        });
+        return null;
+      }
+      
+      console.log('Fecha de promoción válida detectada:', {
+        original: promotionEndDate,
+        parseada: date.toISOString(),
+        tiempoRestante: (date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24) + ' días'
+      });
+      return date;
+    } catch (e) {
+      console.error('Error al procesar la fecha proporcionada:', e);
+      return null;
+    }
+  };
+  
+  // Calcular tiempo restante
+  useEffect(() => {
+    console.log('========== INICIALIZANDO CONTADOR ==========');
+    console.log('Fecha de promoción recibida en prop:', promotionEndDate);
+    console.log('Tipo de dato de promotionEndDate:', typeof promotionEndDate);
+    
+    // Inspeccionar propiedades de la presentación para depuración
+    console.log('Props recibidos en Slide10:', { price, promotionEndDate, whatsappLink });
+    
+    // Usar la fecha proporcionada si es válida
+    const validEndDate = getValidFutureDate();
+    
+    // Si no hay fecha válida, no mostrar contador
+    if (!validEndDate) {
+      console.log('No hay fecha válida para el contador, ocultando contador');
+      setTimeLeft(null);
+      return;
+    }
+    
+    const calculateTimeLeft = () => {
+      const now = new Date();
+      const difference = validEndDate.getTime() - now.getTime();
+      
+      if (difference <= 0) return null;
+      
+      return {
+        days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+        hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
+        minutes: Math.floor((difference / 1000 / 60) % 60),
+        seconds: Math.floor((difference / 1000) % 60),
+      };
+    };
+    
+    // Establecer tiempo inicial
+    setTimeLeft(calculateTimeLeft());
+    
+    // Actualizar cada segundo
     const timer = setInterval(() => {
-      setTimeLeft(calculateTimeLeft())
-    }, 1000)
-
-    return () => clearInterval(timer)
-  }, [promotionEndDate])
-
+      const newTimeLeft = calculateTimeLeft();
+      setTimeLeft(newTimeLeft);
+      
+      // Si el tiempo se acabó, limpiar el intervalo
+      if (!newTimeLeft) clearInterval(timer);
+    }, 1000);
+    
+    return () => clearInterval(timer);
+  }, [promotionEndDate]);
+  
   return (
     <div className="flex flex-col min-h-[600px] p-8 relative overflow-hidden">
       <div className="absolute inset-0 z-0">
@@ -142,7 +209,8 @@ export default function Slide10({ price = 3000, promotionEndDate, whatsappLink =
                   </svg>
                 </div>
 
-                {timeLeft && (
+                {/* Mostrar el contador solo cuando hay timeLeft */}
+                {timeLeft ? (
                   <div className="text-center mb-4 p-3 bg-black rounded-lg border border-neon-green/30">
                     <p className="text-sm text-white mb-1">La oferta termina en:</p>
                     <div className="grid grid-cols-4 gap-2">
@@ -164,7 +232,7 @@ export default function Slide10({ price = 3000, promotionEndDate, whatsappLink =
                       </div>
                     </div>
                   </div>
-                )}
+                ) : null}
 
                 <div className="flex justify-center">
                   <Button

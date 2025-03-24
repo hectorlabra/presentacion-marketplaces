@@ -28,6 +28,15 @@ interface PresentationData {
 }
 
 export default function DynamicPresentation({ presentationData }: { presentationData: PresentationData }) {
+  // Depurar datos de presentación
+  console.log('Datos de presentación recibidos:', {
+    prospect_name: presentationData.prospect_name,
+    price: presentationData.price,
+    promotion_end_date: presentationData.promotion_end_date,
+    whatsapp_link: presentationData.whatsapp_link,
+    challenge_fields: presentationData.challenge_fields
+  });
+  
   const [currentSlide, setCurrentSlide] = useState(0)
 
   const slides = [
