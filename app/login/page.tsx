@@ -1,12 +1,13 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import AuthButton from "@/components/admin/auth-button"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
-export default function LoginPage() {
+// Componente que usa searchParams
+function LoginContent() {
   const [loading, setLoading] = useState(true)
   const [sessionExpired, setSessionExpired] = useState(false)
   const router = useRouter()
@@ -87,5 +88,21 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+// Componente principal que envuelve el contenido en Suspense
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-black">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="w-12 h-12 border-t-2 border-b-2 border-green-500 rounded-full animate-spin"></div>
+          <div className="text-white text-sm">Cargando...</div>
+        </div>
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   )
 }
