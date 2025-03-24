@@ -8,35 +8,24 @@ export default function AuthButton({ user, redirectAfterLogin = '/admin' }: { us
 
   const handleLogin = async () => {
     try {
-      // Obtener la URL del sitio desde las variables de entorno o usar la URL actual
-      const siteUrl = typeof window !== 'undefined' 
-        ? (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-            ? 'http://localhost:3000'
-            : window.location.origin)
-        : 'http://localhost:3000';
+      // Obtener la URL del sitio desde las variables de entorno
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
       
       // Construir URL de redirección explícita
       const redirectUrl = `${siteUrl}/auth/callback`;
       
       console.log('URL de redirección para autenticación:', redirectUrl);
       
-      // Lista de dominios de correo permitidos (para mayor seguridad)
-      const allowedDomains = ['innovare.lat', 'gmail.com']
-      
-      // Iniciar sesión con OAuth y configuraciones de seguridad mejoradas
+      // Iniciar sesión con OAuth
       await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
           redirectTo: redirectUrl,
           queryParams: {
-            // Solicitar acceso al correo para verificar el dominio
-            access_type: 'offline',
-            prompt: 'consent',
-            hd: allowedDomains.join(',') // Limitar a dominios específicos (Google Workspace)
+            prompt: 'select_account',  // Siempre mostrar selector de cuentas
+            access_type: 'offline'     // Permitir refresh tokens
           },
-          // Establecer tiempo de expiración de sesión más corto (12 horas)
-          // Esto se aplicará cuando se cree la sesión
-          scopes: 'email profile',
+          scopes: 'email profile',     // Solicitar acceso al email y perfil
         },
       })
       
@@ -50,11 +39,8 @@ export default function AuthButton({ user, redirectAfterLogin = '/admin' }: { us
   const handleLogout = async () => {
     await supabase.auth.signOut()
     
-    // Redirigir siempre a /login después de cerrar sesión
-    const loginUrl = '/login'
-    
-    console.log('Logout redirecting to:', loginUrl)
-    window.location.href = loginUrl
+    // Redirigir al inicio después de cerrar sesión
+    window.location.href = '/'
   }
 
   return user ? (

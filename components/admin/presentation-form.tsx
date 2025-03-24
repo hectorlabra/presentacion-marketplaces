@@ -49,22 +49,81 @@ export default function PresentationForm({ user, initialPresentation, isEditing 
 
       // Verificar que el usuario esté autenticado
       if (!user || !user.id) {
+        console.error('Usuario no autenticado:', { user })
         setError("Usuario no autenticado. Por favor, inicia sesión nuevamente.")
         setIsSubmitting(false)
         return
       }
 
-      // Obtener el ID del usuario de la sesión
-      const { data: { session } } = await supabase.auth.getSession()
-      const userId = session?.user?.id || user.id
+      // Obtener el ID del usuario
+      const userId = user?.id
+      
+      if (!userId) {
+        console.error('No hay usuario autenticado:', { user })
+        setError("No hay sesión activa. Por favor, inicia sesión nuevamente.")
+        setIsSubmitting(false)
+        return
+      }
+      
+      // Verificar que la sesión sigue activa
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        // Verificar si tenemos una sesión válida
+        if (!session || !session.user || !session.user.id) {
+          console.error('No se detectó una sesión válida:', { 
+            sessionExists: !!session,
+            userExists: !!session?.user,
+            userId: session?.user?.id || 'no disponible'
+          })
+          setError("No se detectó una sesión válida. Por favor, inicia sesión nuevamente.")
+          setIsSubmitting(false)
+          return
+        }
+        
+        console.log('Sesión válida detectada:', { 
+          email: session.user.email,
+          id: session.user.id
+        })
+      } catch (error) {
+        console.error('Error al verificar la sesión:', error)
+        setError("Error al verificar la sesión. Por favor, intenta nuevamente.")
+        setIsSubmitting(false)
+        return
+      }
+      
+      // Verificar que tenemos un userId válido
+      if (!userId) {
+        console.error('No se pudo obtener el ID del usuario:', { session, user })
+        throw new Error('No se pudo obtener el ID del usuario')
+      }
+      
+      console.log('ID del usuario autenticado:', userId)
       
       let result;
       
+      // Verificar la estructura de la tabla
+      const { data: tableInfo, error: tableError } = await supabase
+        .from('presentations')
+        .select('*')
+        .limit(1);
+      
+      if (tableError) {
+        console.error('Error verificando estructura de tabla:', tableError);
+        throw new Error('Error al verificar la estructura de la tabla');
+      }
+      
+      // Determinar si debemos usar el campo 'content' o campos individuales
+      const hasContentColumn = tableInfo && tableInfo.length > 0 && 'content' in tableInfo[0];
+      console.log('Estructura de la tabla:', tableInfo);
+      console.log('¿Tiene columna content?:', hasContentColumn);
+      
       if (isEditing && initialPresentation?.id) {
         // Actualizar presentación existente
-        const { data: updatedData, error } = await supabase
-          .from('presentations')
-          .update({
+        let updateData;
+        
+        if (hasContentColumn) {
+          updateData = {
             title: formData.prospectName,
             content: {
               prospect_name: formData.prospectName,
@@ -75,19 +134,40 @@ export default function PresentationForm({ user, initialPresentation, isEditing 
             },
             status: 'published',
             updated_at: new Date().toISOString()
-          })
+          };
+        } else {
+          // Usar campos individuales si no hay columna 'content'
+          updateData = {
+            title: formData.prospectName,
+            prospect_name: formData.prospectName,
+            challenge_fields: formData.challengeFields,
+            price: data.price,
+            promotion_end_date: data.promotionEndDate ? new Date(data.promotionEndDate).toISOString() : null,
+            whatsapp_link: data.whatsappLink,
+            status: 'published',
+            updated_at: new Date().toISOString()
+          };
+        }
+        
+        const { data: updatedData, error } = await supabase
+          .from('presentations')
+          .update(updateData)
           .eq('id', initialPresentation.id)
           .select()
           .single();
           
-        if (error) throw error;
+        if (error) {
+          console.error('Error actualizando presentación:', error);
+          throw error;
+        }
         result = updatedData;
         setSuccess(`¡Presentación actualizada con éxito!`);
       } else {
         // Crear nueva presentación
-        const { data: insertedData, error } = await supabase
-          .from('presentations')
-          .insert({
+        let insertData;
+        
+        if (hasContentColumn) {
+          insertData = {
             title: formData.prospectName,
             content: {
               prospect_name: formData.prospectName,
@@ -100,11 +180,56 @@ export default function PresentationForm({ user, initialPresentation, isEditing 
             status: 'published',
             url: `/${slug}`,
             user_id: userId
-          })
+          };
+        } else {
+          // Usar campos individuales si no hay columna 'content'
+          insertData = {
+            title: formData.prospectName,
+            prospect_name: formData.prospectName,
+            challenge_fields: formData.challengeFields,
+            price: data.price,
+            promotion_end_date: data.promotionEndDate ? new Date(data.promotionEndDate).toISOString() : null,
+            whatsapp_link: data.whatsappLink,
+            slug: slug,
+            status: 'published',
+            url: `/${slug}`,
+            user_id: userId
+          };
+        }
+        
+        // Verificar que la sesión sigue activa y obtener el token actual
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        if (!session) {
+          console.error('No hay sesión activa al intentar crear la presentación')
+          throw new Error("La sesión ha expirado. Por favor, inicia sesión nuevamente.")
+        }
+
+        // Usar el ID del usuario de la sesión actual
+        const currentUserId = session.user.id
+        
+        // Actualizar el user_id con el de la sesión actual
+        insertData.user_id = currentUserId;
+        
+        console.log('Datos a insertar:', { ...insertData, user_id: currentUserId });
+        
+        const { data: insertedData, error } = await supabase
+          .from('presentations')
+          .insert(insertData)
           .select()
           .single();
           
-        if (error) throw error;
+        if (error) {
+          const errorMessage = error.message || 'Error desconocido';
+          console.error('Error creando presentación:', { 
+            error: errorMessage,
+            code: error.code,
+            details: error.details,
+            hint: error.hint,
+            userId: currentUserId 
+          });
+          throw error;
+        }
         result = insertedData;
         setSuccess(`¡Presentación creada con éxito!`);
       }
@@ -113,7 +238,11 @@ export default function PresentationForm({ user, initialPresentation, isEditing 
       setPresentationUrl(url);
       setIsSubmitting(false);
     } catch (err: any) {
-      setError(err.message || "Error al crear la presentación")
+      if (err.code === '42501') {
+        setError("Error de permisos: Verifica que estés autenticado correctamente.")
+      } else {
+        setError(err.message || "Error al crear la presentación")
+      }
       setIsSubmitting(false)
     }
   }

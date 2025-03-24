@@ -16,15 +16,25 @@ export default function NewPresentationPage() {
   useEffect(() => {
     const getUser = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!session?.user) {
-          router.push('/login')
+        const { data: { session }, error } = await supabase.auth.getSession()
+        
+        if (error) {
+          console.error('Error obteniendo sesión:', error)
+          router.push('/')
           return
         }
+
+        if (!session?.user) {
+          console.log('No hay sesión activa, redirigiendo...')
+          router.push('/')
+          return
+        }
+
+        console.log('Usuario autenticado:', session.user.email)
         setUser(session.user)
       } catch (error) {
-        console.error('Error getting session:', error)
-        router.push('/login')
+        console.error('Error inesperado:', error)
+        router.push('/')
       } finally {
         setLoading(false)
       }

@@ -36,12 +36,23 @@ export async function GET(request: NextRequest) {
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
     
     // Intercambiar código por sesión
-    await supabase.auth.exchangeCodeForSession(code)
+    const { data, error: sessionError } = await supabase.auth.exchangeCodeForSession(code)
+    
+    if (sessionError) {
+      console.error('Error al intercambiar código por sesión:', sessionError)
+      throw sessionError
+    }
+
+    // Verificar que tenemos una sesión válida
+    if (!data.session) {
+      console.error('No se pudo obtener una sesión válida')
+      throw new Error('No se pudo obtener una sesión válida')
+    }
+
+    console.log('Callback - Autenticación exitosa para:', data.session.user.email)
     
     // Construir la URL de redirección usando la URL base del sitio
     const redirectUrl = new URL('/admin', siteUrl)
-    
-    console.log('Callback - Autenticación exitosa')
     console.log('Callback - Redirigiendo a:', redirectUrl.toString())
     
     return NextResponse.redirect(redirectUrl)

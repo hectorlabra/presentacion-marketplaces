@@ -21,11 +21,46 @@ export default function AdminPage() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
+        // Primero verificamos si hay datos en la tabla
+        const { data: tableInfo, error: tableError } = await supabase
+          .from('presentations')
+          .select('*')
+          .limit(1);
+        
+        if (tableError) {
+          console.error('Error verificando tabla:', tableError);
+          throw tableError;
+        }
+
+        // Si no hay datos, establecemos estadísticas en cero
+        if (!tableInfo || tableInfo.length === 0) {
+          setStats({
+            total: 0,
+            published: 0,
+            drafts: 0,
+            recent: 0
+          });
+          setLoading(false);
+          return;
+        }
+
+        // Obtenemos la sesión actual
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session?.user?.id) {
+          console.error('No hay sesión de usuario activa');
+          throw new Error('No hay sesión de usuario activa');
+        }
+
+        // Obtenemos las estadísticas
         const { data, error } = await supabase
           .from('presentations')
           .select('status, created_at')
+          .eq('user_id', session.user.id)
 
-        if (error) throw error
+        if (error) {
+          console.error('Error obteniendo presentaciones:', { error, userId: session.user.id });
+          throw error;
+        }
 
         // Asegurar que data es un array, incluso si está vacío
         const presentations = data || []
@@ -39,8 +74,15 @@ export default function AdminPage() {
           drafts: presentations.filter(p => p.status === 'draft').length,
           recent: presentations.filter(p => new Date(p.created_at) > thirtyDaysAgo).length
         })
-      } catch (error) {
-        console.error('Error fetching stats:', error)
+      } catch (error: any) {
+        console.error('Error fetching stats:', { error: error.message || error, details: error })
+        // Establecer estadísticas en cero en caso de error
+        setStats({
+          total: 0,
+          published: 0,
+          drafts: 0,
+          recent: 0
+        })
       } finally {
         setLoading(false)
       }
