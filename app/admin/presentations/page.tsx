@@ -16,9 +16,16 @@ export default function PresentationsPage() {
   useEffect(() => {
     const fetchPresentations = async () => {
       try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session?.user) {
+          router.push('/login')
+          return
+        }
+        
         const { data, error } = await supabase
           .from('presentations')
           .select('*')
+          .eq('user_id', session.user.id)
           .order('created_at', { ascending: false })
 
         if (error) throw error
@@ -31,7 +38,7 @@ export default function PresentationsPage() {
     }
 
     fetchPresentations()
-  }, [supabase])
+  }, [router, supabase])
 
   if (loading) {
     return (
@@ -49,7 +56,9 @@ export default function PresentationsPage() {
   }
 
   const handleView = (url: string) => {
-    window.open(url, '_blank')
+    // Asegurar que la URL tenga el origen correcto
+    const fullUrl = url.startsWith('http') ? url : `${window.location.origin}${url}`
+    window.open(fullUrl, '_blank')
   }
 
   const handleDelete = async (id: string) => {

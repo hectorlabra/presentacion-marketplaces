@@ -67,7 +67,10 @@ export default function AdminPage() {
           <h2 className="text-2xl font-bold text-white">Dashboard</h2>
           <p className="text-zinc-400">Bienvenido a tu panel de control.</p>
         </div>
-        <Button onClick={() => router.push('/admin/presentations/new')}>
+        <Button 
+          onClick={() => router.push('/admin/presentations/new')}
+          className="bg-neon-green hover:bg-neon-green/90 text-black"
+        >
           <Plus className="mr-2 h-4 w-4" /> Nueva Presentación
         </Button>
       </div>

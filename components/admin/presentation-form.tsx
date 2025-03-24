@@ -7,14 +7,20 @@ import StepOne from "./step-one"
 import StepTwo from "./step-two"
 import { Card, CardContent } from "@/components/ui/card"
 
-export default function PresentationForm({ user }: { user: any }) {
+interface PresentationFormProps {
+  user: any
+  initialPresentation?: any
+  isEditing?: boolean
+}
+
+export default function PresentationForm({ user, initialPresentation, isEditing = false }: PresentationFormProps) {
   const [step, setStep] = useState(1)
   const [formData, setFormData] = useState({
-    prospectName: "",
-    challengeFields: ["", "", "", "", "", ""],
-    price: 3000,
-    promotionEndDate: "",
-    whatsappLink: "",
+    prospectName: initialPresentation?.prospect_name || "",
+    challengeFields: initialPresentation?.challenge_fields || ["", "", "", "", "", ""],
+    price: initialPresentation?.price || 3000,
+    promotionEndDate: initialPresentation?.promotion_end_date ? new Date(initialPresentation.promotion_end_date).toISOString().split('T')[0] : "",
+    whatsappLink: initialPresentation?.whatsapp_link || "",
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState("")
@@ -29,7 +35,6 @@ export default function PresentationForm({ user }: { user: any }) {
   const handleStepTwoSubmit = async (data: { price: number; promotionEndDate: string; whatsappLink: string }) => {
     setFormData((prev) => ({ ...prev, ...data }))
 
-    // Crear la presentación
     try {
       setIsSubmitting(true)
       setError("")
@@ -49,38 +54,64 @@ export default function PresentationForm({ user }: { user: any }) {
         return
       }
 
-      console.log("Usuario autenticado:", user)
-      console.log("ID del usuario:", user.id)
-      
-      // Intentar obtener la sesión actual para verificar el ID del usuario
+      // Obtener el ID del usuario de la sesión
       const { data: { session } } = await supabase.auth.getSession()
-      console.log("Sesión actual:", session)
-      console.log("ID del usuario en la sesión:", session?.user?.id)
-      
-      // Usar el ID del usuario de la sesión si está disponible
       const userId = session?.user?.id || user.id
-      console.log("Usando ID:", userId)
       
-      // Usar la función RPC en lugar de inserción directa
-      const { data: insertedData, error } = await supabase.rpc('insert_presentation', {
-        p_slug: slug,
-        p_prospect_name: formData.prospectName,
-        p_challenge_fields: formData.challengeFields,
-        p_price: data.price,
-        p_promotion_end_date: data.promotionEndDate ? new Date(data.promotionEndDate).toISOString() : null,
-        p_whatsapp_link: data.whatsappLink,
-        p_created_by: userId
-      })
-
-      if (error) {
-        console.error("Error inserting presentation:", error)
-        throw error
+      let result;
+      
+      if (isEditing && initialPresentation?.id) {
+        // Actualizar presentación existente
+        const { data: updatedData, error } = await supabase
+          .from('presentations')
+          .update({
+            title: formData.prospectName,
+            content: {
+              prospect_name: formData.prospectName,
+              challenge_fields: formData.challengeFields,
+              price: data.price,
+              promotion_end_date: data.promotionEndDate ? new Date(data.promotionEndDate).toISOString() : null,
+              whatsapp_link: data.whatsappLink
+            },
+            status: 'published',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', initialPresentation.id)
+          .select()
+          .single();
+          
+        if (error) throw error;
+        result = updatedData;
+        setSuccess(`¡Presentación actualizada con éxito!`);
+      } else {
+        // Crear nueva presentación
+        const { data: insertedData, error } = await supabase
+          .from('presentations')
+          .insert({
+            title: formData.prospectName,
+            content: {
+              prospect_name: formData.prospectName,
+              challenge_fields: formData.challengeFields,
+              price: data.price,
+              promotion_end_date: data.promotionEndDate ? new Date(data.promotionEndDate).toISOString() : null,
+              whatsapp_link: data.whatsappLink,
+              slug: slug
+            },
+            status: 'published',
+            url: `/${slug}`,
+            user_id: userId
+          })
+          .select()
+          .single();
+          
+        if (error) throw error;
+        result = insertedData;
+        setSuccess(`¡Presentación creada con éxito!`);
       }
 
-      const url = `${window.location.origin}/${slug}`
-      setPresentationUrl(url)
-      setSuccess(`¡Presentación creada con éxito!`)
-      setIsSubmitting(false)
+      const url = `${window.location.origin}${result.url || `/${slug}`}`;
+      setPresentationUrl(url);
+      setIsSubmitting(false);
     } catch (err: any) {
       setError(err.message || "Error al crear la presentación")
       setIsSubmitting(false)
@@ -108,7 +139,9 @@ export default function PresentationForm({ user }: { user: any }) {
   return (
     <Card className="border-zinc-800 bg-zinc-900">
       <CardContent className="p-6 md:p-8">
-        <h2 className="mb-6 text-2xl font-bold text-white">Crear Nueva Presentación</h2>
+        <h2 className="mb-6 text-2xl font-bold text-white">
+          {isEditing ? 'Editar Presentación' : 'Crear Nueva Presentación'}
+        </h2>
 
         {error && <div className="mb-6 rounded-md bg-red-500/10 p-4 text-red-500">{error}</div>}
 
@@ -149,7 +182,7 @@ export default function PresentationForm({ user }: { user: any }) {
                 onClick={handleReset}
                 className="bg-neon-green hover:bg-neon-green/90 text-black"
               >
-                Crear Nueva
+                {isEditing ? 'Crear Otra' : 'Crear Nueva'}
               </Button>
             </div>
           </div>
