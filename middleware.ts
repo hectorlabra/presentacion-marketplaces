@@ -20,14 +20,14 @@ const AUTH_ROUTES = ['/login', '/auth/callback']
 const GLOBAL_RATE_LIMIT = {
   MAX_REQUESTS: 100, // Máximo número de solicitudes
   WINDOW_MS: 60 * 1000, // Ventana de tiempo (1 minuto)
-  BLOCK_DURATION_MS: 5 * 60 * 1000, // Duración del bloqueo (5 minutos)
+  BLOCK_DURATION_MS: 5 * 60 * 1000, // Duración del bloqueo (5 minutos),
 }
 
 // Configuración de rate limiting para APIs
 const API_RATE_LIMIT = {
   MAX_REQUESTS: 30, // Máximo número de solicitudes a APIs
   WINDOW_MS: 60 * 1000, // Ventana de tiempo (1 minuto)
-  BLOCK_DURATION_MS: 10 * 60 * 1000, // Duración del bloqueo (10 minutos)
+  BLOCK_DURATION_MS: 10 * 60 * 1000, // Duración del bloqueo (10 minutos),
 }
 
 export async function middleware(req: NextRequest) {
@@ -91,12 +91,40 @@ export async function middleware(req: NextRequest) {
     })
   }
   
-  // 4. Redireccionar la ruta principal a /login
+  // 4. Verificar acceso a presentaciones por slug
+  // Si es una ruta directa a una presentación (no admin)
+  // Validamos solo slugs directos, no rutas admin ni otras rutas del sistema
+  if (path.split('/').length === 2 && path !== '/' && !path.startsWith('/admin') && 
+      !path.startsWith('/_next') && !path.startsWith('/api') &&
+      !path.includes('.') && !AUTH_ROUTES.includes(path)) {
+    
+    const slug = path.substring(1); // Quitar el '/' inicial
+    
+    // Crear cliente de Supabase
+    const res = NextResponse.next()
+    const supabase = createMiddlewareClient({ req, res })
+    
+    // Verificar si la presentación existe y está publicada
+    const { data: presentation, error } = await supabase
+      .from('presentations')
+      .select('status')
+      .eq('slug', slug)
+      .single();
+    
+    if (error || !presentation || presentation.status !== 'published') {
+      // Si no existe, hay error o está despublicada, redirigir a una página 404
+      return NextResponse.rewrite(new URL('/not-found', req.url));
+    }
+    
+    return res;
+  }
+  
+  // 5. Redireccionar la ruta principal a /login
   if (path === '/') {
     return NextResponse.redirect(new URL('/login', req.url))
   }
   
-  // 5. Rate limiting para rutas de autenticación
+  // 6. Rate limiting para rutas de autenticación
   if (path.startsWith('/auth') && method === 'POST') {
     // Limpiar entradas antiguas
     Object.keys(loginAttempts).forEach(ip => {
@@ -124,14 +152,14 @@ export async function middleware(req: NextRequest) {
     }
   }
   
-  // 6. Preparar respuesta y cliente Supabase
+  // 7. Preparar respuesta y cliente Supabase
   const res = NextResponse.next()
   const supabase = createMiddlewareClient({ req, res })
   
-  // 7. Verificar y renovar la sesión
+  // 8. Verificar y renovar la sesión
   const { data: { session } } = await supabase.auth.getSession()
   
-  // 8. Para rutas protegidas, verificar si el usuario está autenticado
+  // 9. Para rutas protegidas, verificar si el usuario está autenticado
   if (PROTECTED_ROUTES.some(route => path.startsWith(route))) {
     // Si no hay sesión y estamos en una ruta protegida, redirigir a login
     if (!session) {
@@ -170,7 +198,7 @@ export async function middleware(req: NextRequest) {
     res.headers.set('Pragma', 'no-cache')
   }
   
-  // 9. Añadir encabezado para seguimiento de tiempo entre solicitudes
+  // 10. Añadir encabezado para seguimiento de tiempo entre solicitudes
   res.headers.set('x-last-request-time', now.toString())
   
   return res

@@ -104,6 +104,78 @@ export default function PresentationsPage() {
     }
   }
 
+  // Función para cambiar el estado de una presentación
+  const handleStatusChange = async (id: string, status: string) => {
+    console.log(`Iniciando cambio de estado: presentación ${id} a estado "${status}"`);
+    
+    try {
+      // 1. Primero verificamos que la presentación existe y obtenemos sus datos actuales
+      console.log('Paso 1: Verificando que la presentación existe...');
+      const { data: currentPresentation, error: fetchError } = await supabase
+        .from('presentations')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (fetchError) {
+        console.error('Error al obtener la presentación:', fetchError);
+        console.error('Detalles del error:', {
+          code: fetchError.code,
+          message: fetchError.message,
+          details: fetchError.details
+        });
+        throw fetchError;
+      }
+      
+      console.log('Presentación encontrada:', currentPresentation);
+      
+      // 2. Ahora solo actualizamos el campo status (evitando updated_at por posibles conflictos)
+      console.log('Paso 2: Actualizando solo el campo status...');
+      const { data: updatedData, error: updateError } = await supabase
+        .from('presentations')
+        .update({ status: status })
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (updateError) {
+        console.error('Error al actualizar el estado:', updateError);
+        console.error('Detalles del error:', {
+          code: updateError.code,
+          message: updateError.message,
+          details: updateError.details
+        });
+        
+        // Intentemos verificar permisos para diagnosticar mejor
+        console.log('Verificando permisos de actualización...');
+        const { data: session } = await supabase.auth.getSession();
+        console.log('Usuario actual:', session?.user?.id);
+        console.log('ID de usuario en presentación:', currentPresentation?.user_id);
+        
+        throw updateError;
+      }
+      
+      console.log('Presentación actualizada correctamente:', updatedData);
+      
+      // 3. Actualizar el estado localmente para reflejar el cambio sin recargar
+      console.log('Paso 3: Actualizando estado local en React...');
+      setPresentations(presentations.map(p => 
+        p.id === id ? { ...p, status, updated_at: new Date().toISOString() } : p
+      ));
+      
+      console.log('Cambio de estado completado con éxito');
+    } catch (error: any) {
+      console.error('Error detallado al actualizar estado:', error);
+      console.error('Tipo de error:', typeof error);
+      console.error('Error tiene código:', error?.code);
+      console.error('Error tiene mensaje:', error?.message);
+      console.error('Error es instancia de Error:', error instanceof Error);
+      
+      // Mostrar alerta al usuario
+      alert(`Error al cambiar el estado: ${error?.message || 'Error desconocido'}`);
+    }
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
@@ -127,6 +199,7 @@ export default function PresentationsPage() {
           onEdit={handleEdit}
           onView={handleView}
           onDelete={handleDelete}
+          onChangeStatus={handleStatusChange}
         />
       )}
     </div>
