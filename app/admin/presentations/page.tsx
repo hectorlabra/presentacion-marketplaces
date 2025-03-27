@@ -148,7 +148,7 @@ export default function PresentationsPage() {
         
         // Intentemos verificar permisos para diagnosticar mejor
         console.log('Verificando permisos de actualización...');
-        const { data: session } = await supabase.auth.getSession();
+        const { data: { session } } = await supabase.auth.getSession();
         console.log('Usuario actual:', session?.user?.id);
         console.log('ID de usuario en presentación:', currentPresentation?.user_id);
         

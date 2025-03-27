@@ -83,6 +83,17 @@ export default function AdminLayout({
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 justify-between">
             <div className="flex">
+              {/* Botón móvil para regresar al dashboard */}
+              <div className="flex items-center sm:hidden">
+                <Button
+                  variant="ghost"
+                  className="flex items-center h-10 px-3 py-2 text-sm font-medium text-zinc-300 hover:bg-zinc-800 hover:text-white rounded-md"
+                  onClick={() => router.push('/admin')}
+                >
+                  <LayoutDashboard className="mr-1 h-4 w-4" />
+                  Dashboard
+                </Button>
+              </div>
 
               <div className="hidden sm:ml-6 sm:flex sm:items-center sm:space-x-4">
                 <Button
